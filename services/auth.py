@@ -3,6 +3,7 @@ from models.users import User
 from schemas.auth import CreateUserRequest
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from utils.verification import generate_verification_code, get_code_expiry_time
 from utils.email_templates import verification_email, password_reset_email
 from fastapi import HTTPException
@@ -38,7 +39,7 @@ class AuthService:
                 extra={"email": request.email}
             )
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="Email already registered"
             )
 
@@ -59,6 +60,9 @@ class AuthService:
         db.add(model)
         try:
             await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
         except Exception:
             await db.rollback()
             raise
