@@ -8,8 +8,7 @@ from contextlib import asynccontextmanager
 from core.redis_client import redis_client
 import redis.asyncio as aioredis
 from core.celery_app import celery_app
-
-# Import all models for SQLAlchemy relationship resolution
+from core.scoping import register_tenant_scoping
 
 # Rate limiter imports
 from slowapi import _rate_limit_exceeded_handler
@@ -28,6 +27,9 @@ from sqlalchemy import text
 
 # CORS imports
 from fastapi.middleware.cors import CORSMiddleware
+
+# Register the tenant scoping
+register_tenant_scoping()
 
 # Initialize logging
 setup_logging(
