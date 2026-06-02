@@ -5,7 +5,7 @@
   <img src="assets/logo-light.png" alt="Venix" width="620">
 </picture>
 
-### The headless, multi-tenant commerce backend: one API key, a full production store engine. Built for developers, technical founders, and agencies who need a real backend, not a CMS.
+### The headless, multi-tenant commerce backend: one API key, a full production store engine. Built for developers, technical founders, and agencies who need a commerce backend, not a CMS.
 
 [![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -27,7 +27,7 @@
 
 ## What Venix Is
 
-Venix is a headless, multi-tenant commerce backend, effectively a store engine sold as an API-only service. A store signs up, receives one API key, and immediately has a complete, isolated production backend: authentication, catalog, cart, orders, payments, and admin. No servers to provision, no database to manage, no background workers to babysit.
+Venix is a headless, multi-tenant commerce backend, a store engine delivered as an API-only service. A store signs up, receives one API key, and immediately has a complete, isolated production backend: authentication, catalog, cart, orders, payments, and admin. No servers to provision, no database to manage, no background workers to run.
 
 Tenants bring their own frontend (React, Next.js, a mobile app, a no-code builder, anything), hosted wherever they like. Venix owns nothing on the frontend side and imposes no template. It owns the hard part: correctness, concurrency, security, and reliability behind every endpoint.
 
@@ -40,7 +40,7 @@ Every tenant is fully isolated. One store can never read, write, or affect anoth
 | | Shopify · WooCommerce | API-first commerce backend | Self-hosted from scratch |
 | **Frontend** | Locked to their themes | Bring your own, anywhere | Yours, but you build everything |
 | **Backend** | Hidden, not yours | Production-grade, hosted for you | You build, host, and operate it |
-| **Infra** | Managed | Managed | Postgres, Redis, workers: all on you |
+| **Infrastructure** | Managed | Managed | Postgres, Redis, workers: all on you |
 | **Time to first call** | Fast | One API key | Weeks of plumbing |
 
 Venix fills the gap: the flexibility of a custom backend with none of the infrastructure burden.
@@ -53,61 +53,64 @@ Venix fills the gap: the flexibility of a custom backend with none of the infras
 
 ## Architecture
 
-Venix rests on two engineering differentiators. They are explained below primarily *through the diagrams*. Each one is traced directly from the code that implements it.
+Venix rests on two engineering differentiators, shown below primarily through the diagrams. Each one is traced directly from the code that implements it.
 
 ### 1 · Bridge Isolation Model
 
-Row-level multi-tenant isolation enforced **automatically at the SQLAlchemy session layer**, not by developer discipline. A `do_orm_execute` event listener injects a `tenant_id` filter into *every* `SELECT` for tenant-scoped models, so a query physically cannot return another tenant's rows. A designed path to dedicated-database "silos" exists for a future enterprise tier.
+Row-level multi-tenant isolation enforced **automatically at the SQLAlchemy session layer**, not by developer discipline. A session event listener injects a `tenant_id` filter into every `SELECT` for tenant-scoped models, so a query cannot return another tenant's rows. A designed path to dedicated-database "silos" exists for a future enterprise tier.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0F1419','primaryTextColor':'#F2EFE6','primaryBorderColor':'#5BBA6F','lineColor':'#5BBA6F','tertiaryColor':'#F2EFE6','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#5BBA6F','primaryTextColor':'#0F1419','primaryBorderColor':'#2E7D46','lineColor':'#37A05C','textColor':'#24292F','edgeLabelBackground':'#FFFFFF','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
 flowchart TB
-    subgraph REQ[" Incoming requests "]
+    subgraph REQ[" Requests from many tenants "]
         direction LR
-        TA["Tenant A<br/>API key / JWT"]:::ext
-        TB2["Tenant B<br/>API key / JWT"]:::ext
-        TC["Tenant C<br/>API key / JWT"]:::ext
+        TA["Tenant A"]:::ext
+        TB2["Tenant B"]:::ext
+        TC["Tenant C"]:::ext
     end
 
-    subgraph APP[" Single Venix app instance "]
+    subgraph APP[" One Venix app instance "]
         direction TB
-        Resolve["Tenant resolver<br/>sets request.state.tenant"]:::accent
-        GetDB["get_db()<br/>db.info['tenant_id'] = tenant.id"]:::accent
-        Listener["do_orm_execute listener<br/>injects WHERE tenant_id = :id<br/>on every SELECT"]:::accent
-        Writes["Service writes<br/>tenant_id passed explicitly"]:::core
+        Resolve["Tenant resolver<br/>sets the active tenant on the request"]:::accent
+        GetDB["Tenant-aware session<br/>tags every query with tenant_id"]:::accent
+        Listener["Session event listener<br/>adds a tenant_id filter to every SELECT"]:::accent
+        Writes["Service writes<br/>carry tenant_id explicitly"]:::core
     end
 
-    SharedPG[("Shared PostgreSQL<br/>every row tagged by tenant_id<br/><b>Pool model, shipping now</b>")]:::store
+    SharedPG[("Shared PostgreSQL<br/>every row tagged by tenant_id")]:::store
 
-    subgraph SILO[" Silo model: planned enterprise tier "]
+    subgraph SILO[" Planned enterprise tier "]
         direction LR
-        DBA[("Dedicated tenant DB")]:::future
-        DBB[("Dedicated tenant DB")]:::future
+        DBA[("Dedicated DB")]:::future
+        DBB[("Dedicated DB")]:::future
     end
 
     TA --> Resolve
     TB2 --> Resolve
     TC --> Resolve
     Resolve --> GetDB --> Listener
-    Listener -->|"auto-scoped SELECT"| SharedPG
-    Writes -->|"INSERT with tenant_id"| SharedPG
-    GetDB -.->|"if tenant.db_url is set (future)"| SILO
+    Listener -->|"auto-scoped reads"| SharedPG
+    Writes -->|"scoped writes"| SharedPG
+    GetDB -.->|"silo routing, planned"| SILO
 
-    classDef core fill:#0F1419,stroke:#5BBA6F,color:#F2EFE6;
-    classDef accent fill:#5BBA6F,stroke:#0F1419,color:#0F1419;
-    classDef ext fill:#F2EFE6,stroke:#0F1419,color:#0F1419;
-    classDef store fill:#1E2630,stroke:#5BBA6F,color:#F2EFE6;
-    classDef future fill:#F2EFE6,stroke:#9AA0A6,color:#5F6368,stroke-dasharray:4 4;
+    classDef accent fill:#5BBA6F,stroke:#2E7D46,color:#0F1419;
+    classDef core fill:#2E7D46,stroke:#15532F,color:#FFFFFF;
+    classDef store fill:#2C5F8A,stroke:#1C436A,color:#FFFFFF;
+    classDef ext fill:#5A6470,stroke:#3A424C,color:#FFFFFF;
+    classDef future fill:#E7ECEA,stroke:#9AA0A6,color:#3A424C,stroke-dasharray:5 4;
+    style REQ fill:#2A3640,stroke:#37A05C,color:#FFFFFF,stroke-width:1.5px;
+    style APP fill:#2A3640,stroke:#37A05C,color:#FFFFFF,stroke-width:1.5px;
+    style SILO fill:#2A3640,stroke:#37A05C,color:#FFFFFF,stroke-width:1.5px;
 ```
 
-<sub><b>Reads</b> are auto-scoped by the session listener; <b>writes</b> carry <code>tenant_id</code> explicitly. One instance, one shared database, hard per-tenant isolation, with a dashed path to dedicated databases on demand.</sub>
+<sub>Pool model, shipping now: one instance, one shared database, isolation enforced at the session layer. Reads are auto-scoped by the listener; writes carry <code>tenant_id</code> explicitly. The dashed path routes a tenant to a dedicated database when the silo tier ships.</sub>
 
-### 2 · Zero-Infrastructure Onboarding
+### 2 · One API Key, a Full Backend
 
-One API key resolves to a full backend. A single middleware is the sole enforcement point: it hashes the key, resolves the tenant (cache-first, database on miss), and rejects anything unresolved, inactive, or abusive, all before a request ever touches a route.
+This is what makes onboarding zero-infrastructure: a single key resolves a tenant's entire backend on every request. One resolver middleware is the sole enforcement point. It hashes the key, resolves the tenant cache-first, and rejects anything unresolved, inactive, or abusive before a request reaches a route.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0F1419','primaryTextColor':'#F2EFE6','primaryBorderColor':'#5BBA6F','lineColor':'#0F1419','actorBkg':'#0F1419','actorBorder':'#5BBA6F','actorTextColor':'#F2EFE6','signalColor':'#0F1419','signalTextColor':'#0F1419','noteBkgColor':'#5BBA6F','noteTextColor':'#0F1419','noteBorderColor':'#0F1419','labelBoxBkgColor':'#F2EFE6','labelBoxBorderColor':'#5BBA6F','labelTextColor':'#0F1419','loopTextColor':'#0F1419','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#5BBA6F','primaryTextColor':'#0F1419','lineColor':'#37A05C','actorBkg':'#22663D','actorBorder':'#37A05C','actorTextColor':'#FFFFFF','actorLineColor':'#9AA0A6','signalColor':'#37A05C','signalTextColor':'#37A05C','noteBkgColor':'#5BBA6F','noteTextColor':'#0F1419','noteBorderColor':'#2E7D46','loopTextColor':'#37A05C','sequenceNumberColor':'#FFFFFF','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
 sequenceDiagram
     autonumber
     participant C as Client
@@ -115,78 +118,132 @@ sequenceDiagram
     participant R as Redis
     participant DB as PostgreSQL
 
-    C->>M: Request + X-Tenant-API-Key (or Bearer JWT)
-    Note over M: Bypass: /health, /tenants/register,<br/>/docs, /redoc, /openapi.json, /webhooks/stripe/*
-    M->>R: GET fail-counter for client IP
-    alt >= 10 failures / minute
-        M-->>C: 429 Too many failed attempts
+    C->>M: request + API key or JWT
+    Note over M,R: public paths<br/>skip the resolver
+    M->>R: check IP failure counter
+    alt too many failed attempts
+        M-->>C: 429 rate limited
     end
-    M->>M: SHA-256(api_key)
-    M->>R: GET tenant:apikey:{hash}
+    M->>M: hash API key (SHA-256)
+    M->>R: look up tenant in cache
     alt cache hit
         R-->>M: tenant
-    else cache miss
-        M->>DB: SELECT tenant WHERE api_key_hash = :hash
-        alt found
-            M->>R: SET cache (TTL 300 s)
-        else not found
-            M->>R: INCR IP fail-counter
-            M-->>C: 401 Invalid API Key
-        end
+    else miss or Redis error
+        Note over R,DB: graceful degradation:<br/>Redis error, read<br/>from PostgreSQL
+        M->>DB: load tenant by key hash
+        M->>R: warm cache, best-effort (TTL 300 s)
     end
-    Note over M: JWT path mirrors this via the<br/>tenant_id claim, resolved to tenant:id:{id}
-    alt key tenant != JWT tenant
-        M-->>C: 403 Tenant mismatch
+    Note over M,R: JWT clients resolve<br/>via the tenant_id claim
+    alt key and JWT disagree
+        M-->>C: 403 tenant mismatch
     else tenant inactive
-        M-->>C: 403 Tenant is deactivated
+        M-->>C: 403 deactivated
+    else unresolved
+        M-->>C: 401 unauthorized
     end
-    M->>C: attach request.state.tenant, then continue
+    M->>C: attach tenant, continue to router
 ```
 
-<sub>Every Redis call degrades gracefully: on a cache outage the resolver logs a warning and falls through to PostgreSQL. The platform stays correct, just slower.</sub>
+<sub>One key (or a tenant-scoped JWT) unlocks the whole backend. Rate limiting likewise falls back to an in-memory limiter when Redis is unavailable, so a cache outage slows the platform without breaking it.</sub>
 
 ### System at a glance
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0F1419','primaryTextColor':'#F2EFE6','primaryBorderColor':'#5BBA6F','lineColor':'#5BBA6F','tertiaryColor':'#F2EFE6','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#5BBA6F','primaryTextColor':'#0F1419','primaryBorderColor':'#2E7D46','lineColor':'#37A05C','textColor':'#24292F','edgeLabelBackground':'#FFFFFF','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
 flowchart LR
     Client(["Client<br/>any frontend"]):::ext
 
-    subgraph APP[" Venix app instance (one deployment) "]
+    subgraph APP[" Venix app instance "]
         direction TB
-        MW["Middleware chain<br/>CORS · logging · request-ID · tenant resolver"]:::accent
-        Router["Routers → Schemas<br/>HTTP contract · Pydantic validation"]:::core
-        Service["Services<br/>business logic · authz · transactions"]:::core
+        MW["Middleware<br/>CORS · logging · request-ID · tenant resolver"]:::accent
+        Router["Routers<br/>HTTP contract + Pydantic validation"]:::core
+        Service["Services<br/>business logic + authorization"]:::core
         Model["Models<br/>async SQLAlchemy 2.0 + asyncpg"]:::core
-        Worker["Celery worker"]:::core
-        Beat["Celery beat<br/>reconciliation scheduler"]:::core
+        Worker["Celery worker + beat<br/>async jobs + reconciliation"]:::core
     end
 
-    PG[("PostgreSQL<br/>tenant-scoped rows")]:::store
-    Redis[("Redis<br/>tenant cache · rate limit · cache · broker")]:::store
+    PG[("PostgreSQL")]:::store
+    Redis[("Redis<br/>cache · rate limit · broker")]:::store
     Stripe(["Stripe"]):::ext
-    Resend(["Resend"]):::ext
+    Email(["Email provider"]):::ext
 
     Client -->|HTTPS| MW
     MW -->|"resolve tenant"| Redis
-    MW -.->|"on cache miss"| PG
     MW --> Router --> Service --> Model --> PG
     Service -->|"cache-aside"| Redis
-    Service <-->|"checkout · refund"| Stripe
+    Service <-->|"payments"| Stripe
     Stripe -->|"signed webhook"| Router
-    Redis -->|broker| Worker
-    Beat -->|"every 15 min"| Redis
-    Worker <-->|"reconcile orders"| Stripe
-    Worker -->|"emails"| Resend
+    Redis -->|"broker"| Worker
+    Worker -->|"reconcile"| Stripe
+    Worker -->|"transactional email"| Email
     Worker --> PG
 
-    classDef core fill:#0F1419,stroke:#5BBA6F,color:#F2EFE6;
-    classDef accent fill:#5BBA6F,stroke:#0F1419,color:#0F1419;
-    classDef ext fill:#F2EFE6,stroke:#0F1419,color:#0F1419;
-    classDef store fill:#1E2630,stroke:#5BBA6F,color:#F2EFE6;
+    classDef accent fill:#5BBA6F,stroke:#2E7D46,color:#0F1419;
+    classDef core fill:#2E7D46,stroke:#15532F,color:#FFFFFF;
+    classDef store fill:#2C5F8A,stroke:#1C436A,color:#FFFFFF;
+    classDef ext fill:#5A6470,stroke:#3A424C,color:#FFFFFF;
+    style APP fill:#2A3640,stroke:#37A05C,color:#FFFFFF,stroke-width:1.5px;
 ```
 
-<sub>Strict layering: routers never touch the database, services own all business logic and authorization, Redis is reached only from middleware and services. External dependencies (Redis, Celery, Stripe) are reliability layers, never correctness dependencies.</sub>
+<sub>Strict layering: routers never touch the database, services own all business logic and authorization, Redis is reached only from middleware and services. Redis, Celery, and the email provider are reliability layers, never correctness dependencies.</sub>
+
+### Data model
+
+`tenants` is the root that every domain table hangs from; the rows below it are what the session listener scopes automatically.
+
+```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#22663D','primaryTextColor':'#FFFFFF','primaryBorderColor':'#37A05C','lineColor':'#37A05C','textColor':'#24292F','tertiaryColor':'#FFFFFF','attributeBackgroundColorOdd':'#EAF4EE','attributeBackgroundColorEven':'#FFFFFF','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
+erDiagram
+    TENANTS ||--o{ USERS : owns
+    TENANTS ||--o{ CATEGORIES : owns
+    TENANTS ||--o{ PRODUCTS : owns
+    TENANTS ||--o{ ORDERS : owns
+    TENANTS ||--o{ CART_ITEMS : owns
+    TENANTS ||--o{ ADDRESSES : owns
+    TENANTS ||--o{ PROCESSED_WEBHOOK_EVENTS : owns
+    USERS ||--o{ REFRESH_TOKENS : "has"
+    USERS ||--o{ ADDRESSES : "ships to"
+    USERS ||--o{ CART_ITEMS : fills
+    USERS ||--o{ ORDERS : places
+    CATEGORIES ||--o{ PRODUCTS : groups
+    PRODUCTS ||--o{ CART_ITEMS : "added as"
+    PRODUCTS ||--o{ ORDER_ITEMS : "sold as"
+    PRODUCTS ||--o{ INVENTORY_CHANGES : "audited by"
+    ADDRESSES ||--o{ ORDERS : "ships to"
+    ORDERS ||--o{ ORDER_ITEMS : contains
+
+    TENANTS {
+        uuid id PK
+        string slug UK
+        string api_key_hash UK
+    }
+    USERS {
+        int id PK
+        uuid tenant_id FK
+        string role "CUSTOMER / ADMIN"
+    }
+    PRODUCTS {
+        int id PK
+        uuid tenant_id FK
+        int stock
+    }
+    ORDERS {
+        int id PK
+        uuid tenant_id FK
+        enum status
+        enum payment_status
+    }
+    ORDER_ITEMS {
+        int id PK
+        decimal price_at_time
+    }
+    PROCESSED_WEBHOOK_EVENTS {
+        uuid tenant_id PK
+        string event_id PK
+    }
+```
+
+<sub>Entities and key relationships only. Seven tables carry <code>tenant_id</code> directly; the rest inherit their tenant through a parent, and price snapshots on <code>order_items</code> keep order history immutable.</sub>
 
 ---
 
@@ -194,66 +251,64 @@ flowchart LR
 
 ### Atomic checkout
 
-`SELECT FOR UPDATE` locks each product row before stock is read, so two concurrent buyers of the last unit can never both succeed. For Cash-on-Delivery the order, stock decrement, inventory log, and cart clear commit in **one transaction**; for Stripe the order is created, a Checkout Session is issued, and that same atomic commit happens when the signature-verified webhook confirms payment.
+`SELECT FOR UPDATE` locks each product row before stock is read, so two concurrent buyers of the last unit cannot both succeed. For Cash-on-Delivery the order, stock decrement, inventory log, and cart clear commit in one transaction; for Stripe that same atomic commit runs when the signature-verified webhook confirms payment.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0F1419','primaryTextColor':'#F2EFE6','primaryBorderColor':'#5BBA6F','lineColor':'#0F1419','actorBkg':'#0F1419','actorBorder':'#5BBA6F','actorTextColor':'#F2EFE6','signalColor':'#0F1419','signalTextColor':'#0F1419','noteBkgColor':'#5BBA6F','noteTextColor':'#0F1419','noteBorderColor':'#0F1419','labelBoxBkgColor':'#F2EFE6','labelBoxBorderColor':'#5BBA6F','labelTextColor':'#0F1419','loopTextColor':'#0F1419','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#5BBA6F','primaryTextColor':'#0F1419','lineColor':'#37A05C','actorBkg':'#22663D','actorBorder':'#37A05C','actorTextColor':'#FFFFFF','actorLineColor':'#9AA0A6','signalColor':'#37A05C','signalTextColor':'#37A05C','noteBkgColor':'#5BBA6F','noteTextColor':'#0F1419','noteBorderColor':'#2E7D46','loopTextColor':'#37A05C','sequenceNumberColor':'#FFFFFF','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
 sequenceDiagram
     autonumber
     participant C as Customer
-    participant CO as CheckoutService
+    participant CO as Checkout
     participant DB as PostgreSQL
     participant S as Stripe
     participant WB as Webhook + Beat
 
-    C->>CO: POST /orders (address, payment method)
-    CO->>DB: validate address + cart (400 empty / 409 stock)
-    CO->>DB: INSERT order (PENDING, UNPAID)
-
+    C->>CO: POST /orders (address + method)
+    CO->>DB: validate address and cart
+    Note over CO,DB: empty cart → 400<br/>low stock → 409
+    CO->>DB: create order (PENDING, UNPAID)
     alt Cash on Delivery
-        CO->>DB: SELECT product FOR UPDATE
-        Note over CO,DB: one transaction: order items + price<br/>snapshot + stock decrement + inventory<br/>log + clear cart → COMMIT
-        CO-->>C: 201 order confirmed
+        CO->>DB: lock product rows (SELECT FOR UPDATE)
+        Note over CO,DB: one transaction:<br/>items + price snapshot,<br/>decrement stock, log it,<br/>clear cart
+        CO-->>C: 201 confirmed
     else Stripe
-        CO->>S: create Checkout Session (idempotency key)
+        CO->>S: create Checkout Session
         S-->>CO: session id + url
-        CO->>DB: COMMIT (order holds session id)
         CO-->>C: 201 + checkout_url
-        C->>S: completes payment
-        S->>WB: checkout.session.completed (signed)
-        Note over WB: verify signature → 400 if invalid<br/>dedup via processed_webhook_events
-        WB->>DB: SELECT order FOR UPDATE
-        Note over WB,DB: same atomic transaction →<br/>stock decrement + clear cart →<br/>PAID + CONFIRMED → COMMIT
+        C->>S: pays
+        S->>WB: checkout.session.completed
+        Note over S,WB: verify signature<br/>(400 if bad), then de-dupe
+        WB->>DB: lock order (SELECT FOR UPDATE)
+        Note over DB,WB: same atomic commit:<br/>decrement stock, clear cart,<br/>then PAID + CONFIRMED
     end
-
-    Note over WB,S: Reconciliation beat (every 15 min): UNPAID Stripe<br/>orders older than 30 min → poll Stripe → recover a<br/>lost webhook, or mark EXPIRED + CANCELLED
+    Note over DB,WB: reconciliation beat (15 min):<br/>poll Stripe for stale orders,<br/>recover or expire them
 ```
 
 ### Auto-refund saga
 
-If stock is exhausted between checkout and payment confirmation, Venix can't fulfil the order, so it runs a **compensating transaction**: refund the charge through Stripe, then mark the order refunded and cancelled.
+If stock is exhausted between checkout and payment confirmation, Venix cannot fulfil the order, so it runs a **compensating transaction**: refund the charge through Stripe, then mark the order refunded and cancelled.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0F1419','primaryTextColor':'#F2EFE6','primaryBorderColor':'#5BBA6F','lineColor':'#0F1419','actorBkg':'#0F1419','actorBorder':'#5BBA6F','actorTextColor':'#F2EFE6','signalColor':'#0F1419','signalTextColor':'#0F1419','noteBkgColor':'#5BBA6F','noteTextColor':'#0F1419','noteBorderColor':'#0F1419','labelBoxBkgColor':'#F2EFE6','labelBoxBorderColor':'#5BBA6F','labelTextColor':'#0F1419','loopTextColor':'#0F1419','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#5BBA6F','primaryTextColor':'#0F1419','lineColor':'#37A05C','actorBkg':'#22663D','actorBorder':'#37A05C','actorTextColor':'#FFFFFF','actorLineColor':'#9AA0A6','signalColor':'#37A05C','signalTextColor':'#37A05C','noteBkgColor':'#5BBA6F','noteTextColor':'#0F1419','noteBorderColor':'#2E7D46','loopTextColor':'#37A05C','sequenceNumberColor':'#FFFFFF','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
 sequenceDiagram
     autonumber
     participant S as Stripe
-    participant W as WebhookService
+    participant W as Webhook
     participant DB as PostgreSQL
 
     S->>W: checkout.session.completed (paid)
-    W->>DB: SELECT order FOR UPDATE
-    alt already PAID
-        W-->>S: ack (idempotent no-op)
-    else stock still available
-        W->>DB: decrement stock + items + clear cart
-        W->>DB: order → PAID + CONFIRMED
+    W->>DB: lock order (SELECT FOR UPDATE)
+    alt already paid
+        W-->>S: ack, no-op
+    else stock available
+        W->>DB: decrement stock, clear cart
+        W->>DB: PAID + CONFIRMED
     else stock gone since checkout
-        Note over W,S: compensating action
-        W->>S: Refund.create(payment_intent)
-        W->>DB: order → REFUNDED + CANCELLED
+        Note over S,W: compensating<br/>transaction
+        W->>S: refund the charge
+        W->>DB: REFUNDED + CANCELLED
     end
-    W->>DB: record processed event → COMMIT
+    W->>DB: record event, commit
 ```
 
 ### Order status lifecycle
@@ -261,47 +316,49 @@ sequenceDiagram
 Orders move through a strict finite-state machine. The row is locked before any transition is validated, and skipping or reversing a state is rejected with `409 Conflict`.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#5BBA6F','primaryTextColor':'#0F1419','primaryBorderColor':'#0F1419','lineColor':'#0F1419','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#2E7D46','primaryTextColor':'#FFFFFF','primaryBorderColor':'#37A05C','lineColor':'#37A05C','textColor':'#37A05C','noteBkgColor':'#5BBA6F','noteTextColor':'#0F1419','noteBorderColor':'#2E7D46','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
 stateDiagram-v2
     direction LR
     [*] --> PENDING: checkout
-    PENDING --> CONFIRMED: admin advance · payment confirmed
-    CONFIRMED --> SHIPPED: admin advance
-    SHIPPED --> COMPLETED: admin advance
-    PENDING --> CANCELLED: customer/admin cancel · auto-refund · expired
+    PENDING --> CONFIRMED: advance / paid
+    CONFIRMED --> SHIPPED: advance
+    SHIPPED --> COMPLETED: advance
+    PENDING --> CANCELLED: cancel / refund / expire
     CONFIRMED --> CANCELLED: admin cancel
     COMPLETED --> [*]
     CANCELLED --> [*]
-    note right of COMPLETED: terminal
-    note right of CANCELLED: terminal, stock restored, change audited
+    note right of CANCELLED: terminal, stock restored
+
+    classDef st fill:#2E7D46,stroke:#37A05C,color:#FFFFFF;
+    class PENDING,CONFIRMED,SHIPPED,COMPLETED,CANCELLED st
 ```
 
 ---
 
 ## Engineering Highlights
 
-> Why this is production-grade: every claim below maps to code on the branch.
+> The decisions that keep Venix correct and dependable under real traffic.
 
 | | |
 |---|---|
-| 🔐 **Automatic tenant isolation** | A `do_orm_execute` listener adds a `tenant_id` filter to every `SELECT` on tenant-scoped models. Isolation is a property of the session layer, not of individual queries. |
+| 🔐 **Automatic tenant isolation** | A session event listener adds a `tenant_id` filter to every `SELECT` on tenant-scoped models. Isolation is a property of the session layer, not of individual queries. |
 | 🔑 **One key, full backend** | A single resolver middleware authenticates the API key (or JWT `tenant_id` claim), enforces active status, and guards against IP brute-force. It is the sole entry gate for every request. |
 | ⚛️ **Atomic checkout** | Order creation, stock decrement, inventory log, and cart clear commit in one transaction. Any failure rolls everything back: no partial orders, no phantom stock. |
 | 🔒 **Concurrency-safe by construction** | `SELECT FOR UPDATE` locks product rows before reading stock; cancellations lock in deterministic order to avoid deadlocks. |
-| 💳 **Stripe with reliability guarantees** | Signature-verified, idempotent webhooks (dedup table), an auto-refund saga when stock runs out, and a reconciliation beat that recovers lost webhooks and sweeps stale orders. |
+| 🛟 **Graceful degradation** | A standing principle for every external dependency: a failure degrades, it never cascades into a 5xx. Redis calls fall through to PostgreSQL and rate limiting drops to an in-memory limiter today, with the same treatment being extended to Celery. |
+| 💳 **Stripe with reliability guarantees** | Signature-verified, idempotent webhooks with a dedup table, an auto-refund saga when stock runs out, and a reconciliation beat that recovers lost webhooks and sweeps stale orders. |
 | 🔄 **Token rotation with reuse detection** | Refresh tokens are SHA-256 hashed and rotated on every use; presenting a revoked token is rejected. |
 | 💰 **Price snapshots at purchase** | Order items capture the price at checkout, so later price changes never rewrite order history. |
 | 📋 **Fully audited inventory** | Every stock change is logged with a typed reason; stock is never mutated silently. |
 | ⚙️ **Full async data layer** | One event loop end to end: async routes, async SQLAlchemy 2.0 (asyncpg), async Redis. |
 | 🧪 **A test suite engineered for speed** | **500+ tests run in ~16 s**: savepoint-based isolation, parallel execution via `pytest-xdist`, passwords pre-hashed once at module load. |
-| 🖥️ **Structured, traceable logs** | Every request emits JSON with a unique request ID, status, duration, and client IP. Stdout-only in production (12-Factor). |
 | 🩺 **Real readiness checks** | `/health` pings PostgreSQL, Redis, and the Celery broker, returning `503` if any dependency is down. |
 
 ---
 
 ## Features
 
-Capabilities, not an endpoint inventory. The full, always-current API contract lives in the **[interactive Swagger docs](https://venix.website/docs)**.
+Everything a store needs out of the box. The full, always-current API reference lives in the **[interactive Swagger docs](https://venix.website/docs)**.
 
 | Domain | Capabilities |
 |---|---|
@@ -318,14 +375,14 @@ Capabilities, not an endpoint inventory. The full, always-current API contract l
 
 ## Auth System
 
-Not a tutorial JWT setup. Every edge case is handled, and tokens are now tenant-aware.
+Token-based session security designed for multi-tenant production: issuance, rotation, and revocation, all scoped per tenant.
 
 | Capability | Detail |
 |---|---|
 | Registration | Email + password, validated with Pydantic v2 and `phonenumbers` (E.164) |
 | Email verification | 6-digit code with a 10-minute expiry |
 | Login | Short-lived access token + long-lived refresh token |
-| Tenant-aware tokens | JWTs carry a `tenant_id` claim, used by the resolver for browser/dashboard clients |
+| Tenant-aware tokens | JWTs carry a `tenant_id` claim, used by the resolver for browser and dashboard clients |
 | Token rotation | The old refresh token is revoked on every refresh; reuse is rejected |
 | Token storage | Refresh tokens stored as SHA-256 hashes; plaintext never persists |
 | Password change | Two-step, confirmation-code based |
@@ -348,7 +405,7 @@ Not a tutorial JWT setup. Every edge case is handled, and tokens are now tenant-
 | Auth | python-jose (JWT) · passlib (bcrypt) · SHA-256 token hashing |
 | Validation | Pydantic v2 · email-validator · phonenumbers (E.164) |
 | Rate limiting | SlowAPI, Redis-backed and multi-worker safe |
-| Email | Resend, dispatched through Celery tasks |
+| Email | Transactional email dispatched through Celery tasks |
 | Identifiers | UUIDv7 tenant keys · integer domain keys |
 | Logging | Structured JSON · request-ID tracing |
 | Tooling | Docker · docker-compose · pytest + pytest-asyncio + httpx + pytest-xdist · Ruff |
@@ -437,81 +494,24 @@ python -m scripts.seed_admin
 
 ---
 
-## Data Model
-
-Entities and key relationships: `tenants` is the root every domain table hangs from.
-
-```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0F1419','primaryTextColor':'#F2EFE6','primaryBorderColor':'#5BBA6F','lineColor':'#5BBA6F','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
-erDiagram
-    TENANTS ||--o{ USERS : owns
-    TENANTS ||--o{ CATEGORIES : owns
-    TENANTS ||--o{ PRODUCTS : owns
-    TENANTS ||--o{ ORDERS : owns
-    TENANTS ||--o{ CART_ITEMS : owns
-    TENANTS ||--o{ ADDRESSES : owns
-    TENANTS ||--o{ PROCESSED_WEBHOOK_EVENTS : owns
-    USERS ||--o{ REFRESH_TOKENS : "has sessions"
-    USERS ||--o{ ADDRESSES : "ships to"
-    USERS ||--o{ CART_ITEMS : fills
-    USERS ||--o{ ORDERS : places
-    CATEGORIES ||--o{ PRODUCTS : groups
-    PRODUCTS ||--o{ CART_ITEMS : "added as"
-    PRODUCTS ||--o{ ORDER_ITEMS : "sold as"
-    PRODUCTS ||--o{ INVENTORY_CHANGES : "audited by"
-    ADDRESSES ||--o{ ORDERS : "delivered to"
-    ORDERS ||--o{ ORDER_ITEMS : contains
-
-    TENANTS {
-        uuid id PK
-        string slug UK
-        string api_key_hash UK
-    }
-    USERS {
-        int id PK
-        uuid tenant_id FK
-        string role "CUSTOMER / ADMIN"
-    }
-    PRODUCTS {
-        int id PK
-        uuid tenant_id FK
-        int stock
-    }
-    ORDERS {
-        int id PK
-        uuid tenant_id FK
-        enum status "FSM"
-        enum payment_status
-    }
-    ORDER_ITEMS {
-        int id PK
-        decimal price_at_time "snapshot"
-    }
-    PROCESSED_WEBHOOK_EVENTS {
-        uuid tenant_id PK
-        string event_id PK
-    }
-```
-
----
-
 ## Roadmap
 
 | Stage | Capabilities |
 |---|---|
 | ✅ **Shipped** | Single-tenant commerce engine: auth, catalog, cart, atomic checkout, orders, Stripe payments, admin, rate limiting, structured logging, health checks; deployed with CI |
 | 🔄 **In progress** | **Multi-tenancy**: tenant onboarding & API keys, automatic per-tenant isolation, tenant-aware sessions & caching, per-tenant payment configuration, cross-tenant isolation test suite |
-| 🧭 **Planned** | Coupons & promotions · product relationships (bundles, upsell) · reviews & wishlists · OAuth login · shipment tracking · product search · per-tenant analytics |
+| 🧭 **Planned** | **Venix Dashboard** (tenant console: onboarding, key management, usage & analytics) · coupons & promotions · product relationships · reviews & wishlists · OAuth login · shipment tracking · product search |
 
 <details>
 <summary>More on what's coming</summary>
 
 <br/>
 
-- **Payments & commerce**: coupons and promo codes, product relationships (bundles / alternatives) for frontend-built merchandising
+- **Venix Dashboard**: a web console where store owners onboard, manage and rotate their API keys, and view per-tenant analytics, request volume, traffic, orders, and plan tier and usage. A separate product built on the Venix API; the same operations are available as API endpoints today.
+- **Payments & commerce**: coupons and promo codes, product relationships (bundles and alternatives) for frontend-built merchandising
 - **Engagement & fulfillment**: OAuth login (per-tenant credentials), shipment & delivery tracking, wishlists, purchased-only reviews & ratings with moderation, in-app notifications
 - **Search**: fast, typo-tolerant product search with an isolated index per tenant
-- **Platform**: usage metrics and per-tenant dashboards, richer observability, hierarchical categories, SEO slugs
+- **Platform**: richer observability, hierarchical categories, SEO slugs
 - **Enterprise isolation**: the silo model, a dedicated database per tenant, provisioned on demand
 
 </details>
