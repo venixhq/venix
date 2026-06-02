@@ -87,7 +87,7 @@ Request body:
 
 ## Errors
 
-- `400 Bad Request` — cart is empty.
+- `400 Bad Request` — cart is empty, or `payment_method: "stripe"` selected but tenant has not configured Stripe credentials via `PUT /tenants/me/payment-config`.
 - `401 Unauthorized` — missing or invalid token.
 - `404 Not Found` — address not found or belongs to another user.
 - `409 Conflict` — insufficient stock for one or more items (COD path only).

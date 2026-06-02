@@ -376,3 +376,49 @@ Rate limit: 3/minute per tenant
 
 - `401 Unauthorized` — incorrect password, or no valid tenant resolved.
 - `403 Forbidden` — tenant is not verified.
+
+---
+
+# 11. Configure Payment Provider
+
+## Request
+
+**PUT** `/tenants/me/payment-config`
+
+Auth: `X-Tenant-API-Key` header or `Authorization: Bearer <jwt>`
+
+Rate limit: 10/minute per tenant
+
+```json
+{
+  "stripe_secret_key": "sk_live_...",
+  "stripe_webhook_secret": "whsec_..."
+}
+```
+
+## Validation Rules
+
+- `stripe_secret_key`: required, non-empty string.
+- `stripe_webhook_secret`: required, non-empty string.
+
+## Response (200 OK)
+
+```json
+{
+  "message": "Payment configuration updated"
+}
+```
+
+## Notes
+
+- Credentials are stored in the `tenants` table and never cached in Redis.
+- The response never echoes back the submitted keys.
+- After configuring, the tenant's Stripe webhook URL must be set to `POST /webhooks/stripe/{tenant_slug}` in the Stripe dashboard.
+- Tenants without a configured `stripe_secret_key` cannot use `payment_method: "stripe"` at checkout — a 400 is returned.
+- **Known trade-off:** raw key storage gives broad Stripe account access. Stripe Connect is the V2 solution.
+
+## Errors
+
+- `401 Unauthorized` — no valid tenant resolved.
+- `422 Unprocessable Entity` — missing or empty fields.
+- `429 Too Many Requests` — rate limit exceeded.
