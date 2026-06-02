@@ -43,7 +43,7 @@ Every tenant is fully isolated. One store can never read, write, or affect anoth
 | **Infrastructure** | Managed | Managed | Postgres, Redis, workers: all on you |
 | **Time to first call** | Fast | One API key | Weeks of plumbing |
 
-Venix fills the gap: **plug-and-play simplicity for businesses, programmatic flexibility for developers.**
+Venix fills the gap: **plug-and-play simplicity for business owners, programmatic flexibility for developers.**
 
 ## Current Status
 
