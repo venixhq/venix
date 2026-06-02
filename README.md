@@ -192,7 +192,7 @@ flowchart LR
 `tenants` is the root that every domain table hangs from; the rows below it are what the session listener scopes automatically.
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#22663D','primaryTextColor':'#FFFFFF','primaryBorderColor':'#37A05C','lineColor':'#37A05C','textColor':'#24292F','tertiaryColor':'#FFFFFF','attributeBackgroundColorOdd':'#EAF4EE','attributeBackgroundColorEven':'#FFFFFF','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#22663D','primaryTextColor':'#FFFFFF','primaryBorderColor':'#37A05C','lineColor':'#37A05C','textColor':'#24292F','tertiaryColor':'#FFFFFF','attributeBackgroundColorOdd':'#2E7D46','attributeBackgroundColorEven':'#26384A','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
 erDiagram
     TENANTS ||--o{ USERS : owns
     TENANTS ||--o{ CATEGORIES : owns
