@@ -322,6 +322,7 @@ stateDiagram-v2
 | 📋 **Fully audited inventory** | Every stock change is logged with a typed reason; stock is never mutated silently. |
 | ⚙️ **Full async data layer** | One event loop end to end: async routes, async SQLAlchemy 2.0 (asyncpg), async Redis. |
 | 🧪 **A test suite engineered for speed** | **500+ tests run in ~16 s**: savepoint-based isolation, parallel execution via `pytest-xdist`, passwords pre-hashed once at module load. |
+| 🔎 **Structured logging & request tracing** | Every request is logged as JSON with a unique request ID, status, duration, and client IP; stdout-only in production (12-Factor). |
 | 🩺 **Real readiness checks** | `/health` pings PostgreSQL, Redis, and the Celery broker, returning `503` if any dependency is down. |
 
 ---
