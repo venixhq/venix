@@ -192,6 +192,7 @@ flowchart LR
 `tenants` is the root that every domain table hangs from; the rows below it are what the session listener scopes automatically.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#2E7D46','primaryTextColor':'#FFFFFF','primaryBorderColor':'#37A05C','lineColor':'#37A05C','fontFamily':'ui-sans-serif, system-ui, sans-serif'}}}%%
 erDiagram
     TENANTS ||--o{ USERS : owns
     TENANTS ||--o{ CATEGORIES : owns
@@ -210,39 +211,9 @@ erDiagram
     PRODUCTS ||--o{ INVENTORY_CHANGES : "audited by"
     ADDRESSES ||--o{ ORDERS : "ships to"
     ORDERS ||--o{ ORDER_ITEMS : contains
-
-    TENANTS {
-        uuid id PK
-        string slug UK
-        string api_key_hash UK
-    }
-    USERS {
-        int id PK
-        uuid tenant_id FK
-        string role "CUSTOMER / ADMIN"
-    }
-    PRODUCTS {
-        int id PK
-        uuid tenant_id FK
-        int stock
-    }
-    ORDERS {
-        int id PK
-        uuid tenant_id FK
-        enum status
-        enum payment_status
-    }
-    ORDER_ITEMS {
-        int id PK
-        decimal price_at_time
-    }
-    PROCESSED_WEBHOOK_EVENTS {
-        uuid tenant_id PK
-        string event_id PK
-    }
 ```
 
-<sub>Entities and key relationships only. Seven tables carry <code>tenant_id</code> directly; the rest inherit their tenant through a parent, and price snapshots on <code>order_items</code> keep order history immutable.</sub>
+<sub>Entities and key relationships only. Seven tables carry <code>tenant_id</code> directly; the rest inherit their tenant through a parent, and price snapshots on <code>order_items</code> keep order history immutable. For full column-level detail, read the model files under <a href="models/">models/</a>.</sub>
 
 ---
 
