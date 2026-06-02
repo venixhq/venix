@@ -5,7 +5,7 @@
   <img src="assets/logo-light.png" alt="Venix" width="620">
 </picture>
 
-### The headless, multi-tenant commerce backend: one API key, a full production store engine. Built for developers, technical founders, and agencies who need a commerce backend, not a CMS.
+### Multi-tenant, headless commerce backend-as-a-service: one API key gives any store a full production backend while Venix handles the infrastructure. For developers, technical founders, and agencies who need a commerce backend, not a CMS.
 
 [![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -27,7 +27,7 @@
 
 ## What Venix Is
 
-Venix is a headless, multi-tenant commerce backend, a store engine delivered as an API-only service. A store signs up, receives one API key, and immediately has a complete, isolated production backend: authentication, catalog, cart, orders, payments, and admin. No servers to provision, no database to manage, no background workers to run.
+Venix is a multi-tenant **SaaS platform**, a commerce **backend-as-a-service** for teams that want a real backend without operating one. A store signs up, receives one API key, and immediately has a complete, isolated production backend: authentication, catalog, cart, orders, payments, and admin. That is **zero-infrastructure onboarding**: Venix handles the infrastructure, the servers, database, cache, and background workers, so the tenant never runs any of it.
 
 Tenants bring their own frontend (React, Next.js, a mobile app, a no-code builder, anything), hosted wherever they like. Venix owns nothing on the frontend side and imposes no template. It owns the hard part: correctness, concurrency, security, and reliability behind every endpoint.
 
