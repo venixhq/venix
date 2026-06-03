@@ -5,7 +5,7 @@
   <img src="assets/logo-light.png" alt="Venix" width="620">
 </picture>
 
-### Multi-tenant, headless commerce backend-as-a-service: one API key gives any store a full production backend while Venix handles the infrastructure. For developers, technical founders, and agencies who need a commerce backend, not a CMS.
+### Open-source, multi-tenant, headless commerce backend-as-a-service: one API key gives any store a full production backend while Venix handles the infrastructure. For developers, technical founders, and agencies who need a commerce backend, not a CMS.
 
 [![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -16,6 +16,7 @@
 [![Stripe](https://img.shields.io/badge/Stripe-635BFF?logo=stripe&logoColor=white)](https://stripe.com)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)](https://docker.com)
 [![CI](https://github.com/venixhq/venix/actions/workflows/ci.yml/badge.svg)](https://github.com/venixhq/venix/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-37A05C)](LICENSE)
 
 **[Live API](https://venix.website)** · **[Interactive Docs](https://venix.website/docs)** · **[Health](https://venix.website/health)**
 
@@ -27,7 +28,7 @@
 
 ## What Venix Is
 
-Venix is a multi-tenant **SaaS platform**, a commerce **backend-as-a-service** for teams that want a real backend without operating one. A store signs up, receives one API key, and immediately has a complete, isolated production backend: authentication, catalog, cart, orders, payments, and admin. That is **zero-infrastructure onboarding**: Venix handles the infrastructure, the servers, database, cache, and background workers, so the tenant never runs any of it.
+Venix is an **open-source**, multi-tenant **SaaS platform**, a commerce **backend-as-a-service** for teams that want a real backend without operating one. A store signs up, receives one API key, and immediately has a complete, isolated production backend: authentication, catalog, cart, orders, payments, and admin. That is **zero-infrastructure onboarding**: Venix handles the infrastructure, the servers, database, cache, and background workers, so the tenant never runs any of it.
 
 Tenants bring their own frontend (React, Next.js, a mobile app, a no-code builder, anything), hosted wherever they like. Venix owns nothing on the frontend side and imposes no template. It owns the hard part: correctness, concurrency, security, and reliability behind every endpoint.
 
