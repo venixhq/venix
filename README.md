@@ -5,7 +5,7 @@
   <img src="assets/logo-light.png" alt="Venix" width="620">
 </picture>
 
-### Open-source, multi-tenant, headless commerce backend-as-a-service: one API key gives any store a full production backend while Venix handles the infrastructure. For developers, technical founders, and agencies who need a commerce backend, not a CMS.
+### One API key. A full commerce backend engineered for production.
 
 [![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
