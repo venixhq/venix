@@ -323,7 +323,7 @@ stateDiagram-v2
 | 📋 **Fully audited inventory** | Every stock change is logged with a typed reason; stock is never mutated silently. |
 | ⚙️ **Full async data layer** | One event loop end to end: async routes, async SQLAlchemy 2.0 (asyncpg), async Redis. |
 | 🧪 **A test suite engineered for speed** | **500+ tests run in ~16 s**: savepoint-based isolation, parallel execution via `pytest-xdist`, passwords pre-hashed once at module load. |
-| 🔎 **Structured logging & request tracing** | Every request is logged as JSON with a unique request ID, status, duration, and client IP; stdout-only in production (12-Factor). |
+| 🔎 **Structured logging & request tracing** | JSON logs with level/module/line context and a per-request UUID on every line; secrets and PII are redacted, the level follows the outcome, and production is stdout-only JSON (12-Factor). |
 | 🩺 **Real readiness checks** | `/health` pings PostgreSQL, Redis, and the Celery broker, returning `503` if any dependency is down. |
 
 ---
@@ -362,6 +362,22 @@ Token-based session security designed for multi-tenant production: issuance, rot
 | Logout | Single device or all devices at once |
 | Account deactivation | Soft delete; all sessions revoked |
 | RBAC | `CUSTOMER` and `ADMIN` enforced via FastAPI dependency injection |
+
+---
+
+## Testing
+
+**500+ tests in ~16 s** against a **real PostgreSQL** (no SQLite, no mocked DB), asserting **real database state, not mock calls**.
+
+| Layer | Covers |
+|---|---|
+| **Unit** | Pure logic: order FSM, hashing, validation, tasks |
+| **Integration** | Every service method against the real DB |
+| **API** | Full HTTP: status codes, schemas, RBAC, ownership, edge cases |
+| **Middleware** | Tenant resolver: key/JWT resolution and the 401 / 403 / 429 paths |
+| **Isolation** | Two real tenants prove one can never read or query another's rows (BOLA) |
+
+Built for speed and trust: savepoint-per-test rollback, parallel `pytest-xdist` with a filelock-guarded schema, fully async fixtures, pre-hashed credentials, and boundary-only mocking (Stripe, Redis) so DB side effects stay the real assertion. Security tests also assert secrets never leak and that stored hashes match the returned plaintext.
 
 ---
 
