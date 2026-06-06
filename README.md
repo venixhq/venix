@@ -367,7 +367,7 @@ Token-based session security designed for multi-tenant production: issuance, rot
 
 ## Testing
 
-**500+ tests in ~16 s** against a **real PostgreSQL** (no SQLite, no mocked DB), asserting **real database state, not mock calls**.
+**500+ tests in ~15 s** against a **real PostgreSQL**, asserting **real database state, not mock calls**.
 
 | Layer | Covers |
 |---|---|
